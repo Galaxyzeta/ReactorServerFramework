@@ -1,0 +1,5 @@
+port: 8080
+controller-base-package: test/controller
+interceptor-base-pacakge: test/interceptor
+interceptors: MyInterceptor1, MyInterceptor2
+static: src/test/static
