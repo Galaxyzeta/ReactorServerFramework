@@ -12,10 +12,18 @@ import com.galaxyzeta.server.reactor.WebApplicationContext;
 public class ViewResolver {
 
 	private static Logger LOG = LoggerFactory.getLogger(ViewResolver.class);
-	private static final String STATIC_PATH = WebApplicationContext.getStaticPath();
 	private static final Pattern RESOURCES_REGEX = Pattern.compile("^.*\\.(html|js|css)$");
+	private static String STATIC_PATH;
+	private WebApplicationContext context;
 
-	public static void resolve(Object viewObject, HttpResponse resp) {
+	public ViewResolver(){}
+
+	public ViewResolver(WebApplicationContext context) {
+		this.context = context;
+		STATIC_PATH = context.getStaticPath();
+	}
+
+	public void resolve(Object viewObject, HttpResponse resp) {
 		if(viewObject instanceof HttpResponse) {
 			LOG.INFO("按照 [HttpResponse] 的方式处理视图");
 		} else if (viewObject instanceof String) {
@@ -26,7 +34,7 @@ public class ViewResolver {
 		}
 	}
 
-	private static void resourceResolver(Object viewObject, HttpResponse resp) {
+	private void resourceResolver(Object viewObject, HttpResponse resp) {
 		String resource = (String)viewObject;
 		String filePath = STATIC_PATH+"/"+resource;
 		Matcher matcher = RESOURCES_REGEX.matcher(resource);

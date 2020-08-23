@@ -20,10 +20,11 @@ public final class ReactorServer {
 	private Selector channelSelector = null;
 	private ServerSocketChannel server = null;
 
-	public ReactorServer() {}
+	private WebApplicationContext context;
 
-	public ReactorServer(int port) {
+	public ReactorServer(int port, WebApplicationContext context) {
 		this.port = port;
+		this.context = context;
 	}
 
 	class Acceptor implements Runnable {
@@ -33,7 +34,7 @@ public final class ReactorServer {
 				SocketChannel clientSocket = server.accept();
 				LOG.INFO("请求已被接受");
 				if(clientSocket != null) {
-					new Handler(channelSelector, clientSocket);
+					new Handler(channelSelector, clientSocket, context);
 				}
 			} catch (IOException ioe) {
 				ioe.printStackTrace();

@@ -11,6 +11,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 
 import com.galaxyzeta.parser.ConfigParser;
+import com.galaxyzeta.server.ioc.IocContainer;
 import com.galaxyzeta.util.Logger;
 import com.galaxyzeta.util.LoggerFactory;
 
@@ -23,40 +24,45 @@ import com.galaxyzeta.http.HttpResponse;
 // @Todo：对 Interceptor 合法性的校验加强
 public class WebApplicationContext {
 
-	private static final Logger LOG = LoggerFactory.getLogger(WebApplicationContext.class);
-	private static final HashMap<String, String> CONFIGS = new HashMap<>();
-	private static final HashMap<String, HashMap<String, Router>> ROUTERS = new HashMap<>();
-	private static final ArrayList<Method> INTERCEPTORS = new ArrayList<>();
-	private static final ArrayList<Class<?>> CONTROLLERS = new ArrayList<>();
+	private final Logger LOG = LoggerFactory.getLogger(WebApplicationContext.class);
+	private final HashMap<String, String> configs = new HashMap<>();
+	private final HashMap<String, HashMap<String, Router>> routers = new HashMap<>();
+	private final ArrayList<Method> interceptors = new ArrayList<>();
+	private final ArrayList<Class<?>> CONTROLLERS = new ArrayList<>();
+	private IocContainer iocContainter;
 
 	private static final String INTERCEPTOR_INTERFACE_NAME = "Interceptor";
 	private static final String INTERCEPTOR_METHOD_NAME = "intercept";
 
 	// 接口方法 对外提供路由表查询
-	public static Router searchRouter(String method, String url) {
-		return ROUTERS.get(method).get(url);
+	public Router searchRouter(String method, String url) {
+		return routers.get(method).get(url);
 	}
 
 	// 接口方法 对外提供拦截器方法
-	public static ArrayList<Method> getInterceptors() {
-		return INTERCEPTORS;
+	public ArrayList<Method> getInterceptors() {
+		return interceptors;
 	}
 
 	// 接口方法 对外提供获取static路径方法
-	public static String getStaticPath() {
-		return CONFIGS.get("static");
+	public String getStaticPath() {
+		return configs.get("static");
+	}
+
+	public IocContainer getIocContainer() {
+		return this.iocContainter;
 	}
 
 	// 初始化 方法--URL Mapping 哈希表
-	static {
+	{
 		String[] list = new String[] {"GET", "POST", "PUT", "DELETE", "PATCH", "OPTION"};
 		for(String httpMethod: list) {
-			ROUTERS.put(httpMethod, new HashMap<>());
+			routers.put(httpMethod, new HashMap<>());
 		}
 	}
 	
 	// 包扫描（非递归的）
-	private static void packageScanner(String packageName, List<Class<?>> classList) {
+	private void packageScanner(String packageName, List<Class<?>> classList) {
 		try {
 			ClassLoader loader = Thread.currentThread().getContextClassLoader();
 			Enumeration<URL> urls = loader.getResources(packageName);
@@ -76,7 +82,7 @@ public class WebApplicationContext {
 
 	// 实现了 Controller 接口的子类是控制器，含有 @ReqeustMapping 的方法为控制器路由方法，这些方法将被全部记录在 hashmap 中
 	// 使用 hashmap 维护
-	private static void controllerAnnotationRegister() {
+	private void controllerAnnotationRegister() {
 		for (Class<?> controller : CONTROLLERS) {
 			try {
 				Method[] handlers = controller.getDeclaredMethods();
@@ -88,7 +94,7 @@ public class WebApplicationContext {
 					}
 
 					Router router = new Router(requestMapping.method(), requestMapping.url(), singleHandler);
-					ROUTERS.get(requestMapping.method()).put(requestMapping.url(), router);
+					routers.get(requestMapping.method()).put(requestMapping.url(), router);
 				}
 			} catch (SecurityException e) {
 				e.printStackTrace();
@@ -97,16 +103,16 @@ public class WebApplicationContext {
 	}
 
 	// 注册拦截器
-	private static void interceptorRegistration() {
-		String interceptorBase = CONFIGS.get("interceptor-base-pacakge").trim();
+	private void interceptorRegistration() {
+		String interceptorBase = configs.get("interceptor-base-pacakge").trim();
 		if(interceptorBase == null) {	
 			LOG.WARN("拦截器根目录没有定义，放弃配置拦截器");
 			return;
 		}
-		String[] interceptors = CONFIGS.getOrDefault("interceptors", "").split(",");
+		String[] _interceptors = configs.getOrDefault("interceptors", "").split(",");
 		String interceptorClassName = null;
 
-		for (String interceptor: interceptors) {
+		for (String interceptor: _interceptors) {
 			try {
 				interceptorClassName = (interceptorBase + "/" + interceptor.trim()).replace("/", ".");
 				// 验证是否是合法的 Interface
@@ -122,7 +128,7 @@ public class WebApplicationContext {
 					LOG.ERROR(String.format("启动失败，拦截器必须实现 %s 接口", INTERCEPTOR_INTERFACE_NAME));
 					System.exit(1);
 				} else {
-					INTERCEPTORS.add(interceptorClass.getDeclaredMethod("intercept", HttpRequest.class, HttpResponse.class));
+					interceptors.add(interceptorClass.getDeclaredMethod("intercept", HttpRequest.class, HttpResponse.class));
 					LOG.INFO(String.format("拦截器 %s 注册成功", interceptorClassName));
 				}
 			} catch (ClassNotFoundException e ) {
@@ -136,18 +142,30 @@ public class WebApplicationContext {
 	}
 	
 	// 运行一个Reactor架构的服务器
-	public static void runApplication(String configFile) {
+	public void runApplication(String configFile) {
 		
 		// 读取配置
 		ConfigParser configParser = new ConfigParser(configFile);
-		CONFIGS.putAll(configParser.parse());
+		configs.putAll(configParser.parse());
 		LOG.INFO("配置文件解析完毕");
 
 		// 赋予配置
-		String port = CONFIGS.getOrDefault("port", "8080");
+		String port = configs.getOrDefault("port", "8080");
+
+		// Ioc 容器注册
+		iocContainter = new IocContainer(configs.getOrDefault("ioc-xml-path", "src/iocxml/bean.xml"));
+		try {
+			LOG.INFO("=======初始化Ioc容器=======");
+			iocContainter.init();
+		} catch (Exception e) {
+			LOG.ERROR("IOC容器初始化失败！程序将会退出！");
+			e.printStackTrace();
+			System.exit(1);
+		}
+		LOG.INFO("Ioc容器初始化成功");
 
 		// Controller 注册
-		packageScanner(CONFIGS.get("controller-base-package"), CONTROLLERS);
+		packageScanner(configs.get("controller-base-package"), CONTROLLERS);
 		controllerAnnotationRegister();
 		LOG.INFO("业务逻辑处理器 解析成功");
 
@@ -155,7 +173,7 @@ public class WebApplicationContext {
 		interceptorRegistration();
 
 		// 服务器初始化
-		ReactorServer server = new ReactorServer(Integer.parseInt(port));
+		ReactorServer server = new ReactorServer(Integer.parseInt(port), this);
 		server.nonBlockingIOServer();
 	}
 }

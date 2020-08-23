@@ -21,7 +21,6 @@ import com.galaxyzeta.parser.RequestParser;
 
 import com.galaxyzeta.util.Logger;
 import com.galaxyzeta.util.LoggerFactory;
-import com.galaxyzeta.util.ResponseFactory;
 import com.galaxyzeta.util.ViewResolver;
 
 /**
@@ -32,6 +31,10 @@ import com.galaxyzeta.util.ViewResolver;
 public class Handler implements Runnable {
 
 	// 访问 ApplicationContext 的静态方法可以得到一些与配置有关的东西。
+	private WebApplicationContext context;
+
+	// 单例 viewResolver, @autowire
+	private ViewResolver viewResolver;
 
 	// Epoll 工具
 	private Selector channelSelector;
@@ -56,7 +59,10 @@ public class Handler implements Runnable {
 	private static Logger LOG = LoggerFactory.getLogger(Handler.class);
 
 	// Constructor
-	public Handler(Selector channelSelector, SocketChannel clientSocket) throws IOException {
+	public Handler(Selector channelSelector, SocketChannel clientSocket, WebApplicationContext context) throws IOException {
+		this.context = context;
+		this.viewResolver = (ViewResolver)context.getIocContainer().getBean("viewResolver");
+		
 		this.channelSelector = channelSelector;
 		this.clientSocket = clientSocket;
 		this.clientSocket.configureBlocking(false);
@@ -91,11 +97,11 @@ public class Handler implements Runnable {
 		class InnerRunnable implements Runnable {
 			@Override
 			public void run() {
-				Router router = WebApplicationContext.searchRouter(req.getMethod(), req.getUrl());	// 搜索路由哈希表，O(1)
+				Router router = context.searchRouter(req.getMethod(), req.getUrl());	// 搜索路由哈希表，O(1)
 				boolean intercepted = false;
 				try {
 					// 1. 请求拦截
-					ArrayList<Method> interceptorMethods = WebApplicationContext.getInterceptors();		// 取得拦截器列表
+					ArrayList<Method> interceptorMethods = context.getInterceptors();		// 取得拦截器列表
 					for(Method singleInterceptMethod : interceptorMethods) {
 						Boolean execResult = (Boolean) singleInterceptMethod.invoke(null, req, resp);		// 执行拦截器逻辑
 						// 请求被拒绝
@@ -129,12 +135,12 @@ public class Handler implements Runnable {
 		threadPool.execute(new InnerRunnable());
 	}
 
-	// 根据 ViewObject 解析视图，并发送响应报文，流程在此结束
+	// 3. 根据 ViewObject 解析视图，并发送响应报文，流程在此结束
 	public void write() {
 		try {
 			// 视图解析部分，根据对象返回类型装配 response
 			
-			ViewResolver.resolve(viewObject, resp);
+			viewResolver.resolve(viewObject, resp);
 
 			ByteBuffer buffer = ByteBuffer.wrap(resp.toString().getBytes());
 			clientSocket.write(buffer);

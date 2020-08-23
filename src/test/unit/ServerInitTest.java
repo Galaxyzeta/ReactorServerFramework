@@ -1,10 +1,13 @@
-package test;
+package test.unit;
 
 import com.galaxyzeta.server.reactor.WebApplicationContext;
 
-public class TestAPI {
+/**
+ * 测试服务器加载过程是否有效
+ */
+public class ServerInitTest {
 	public static void main(String[] args) {
 		// "D:/--FILE DATA--/VSWorkSpace/JavaServer/config/config.property"
-		WebApplicationContext.runApplication("src/test/config.property");
+		new WebApplicationContext().runApplication("src/test/config.property");
 	}
 }

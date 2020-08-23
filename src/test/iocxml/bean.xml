@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans>
+
+	<bean name="viewResolver" class="com.galaxyzeta.util.ViewResolver"></bean>
+
+	<bean name="loggerfactory" class="com.galaxyzeta.util.LoggerFactory"></bean>
+	<bean name="tom" class="test.entity.User" init-method="init">
+		<property name="address" ref="tomAddress"/>
+		<property name="username" value="tom"/>
+		<property name="password" value="helloworld"/>
+	</bean>
+	<bean name="tomAddress" class="test.entity.Address">
+		<property name="city" value="Cyber City"/>
+		<property name="street" value="Neon Avenue"/>
+	</bean>
+	<bean name="postProcessor1" class="test.entity.MyBeanPostProcessor"></bean>
+	<bean name="postProcessor2" class="test.entity.MyBeanPostProcessor2"></bean>
+</beans>
