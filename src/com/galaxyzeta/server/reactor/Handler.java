@@ -62,10 +62,12 @@ public class Handler implements Runnable {
 	public Handler(Selector channelSelector, SocketChannel clientSocket, WebApplicationContext context) throws IOException {
 		this.context = context;
 		this.viewResolver = (ViewResolver)context.getIocContainer().getBean("viewResolver");
-		
+		this.viewResolver.setContext(context);
+
 		this.channelSelector = channelSelector;
 		this.clientSocket = clientSocket;
 		this.clientSocket.configureBlocking(false);
+		
 		this.sk = clientSocket.register(channelSelector, SelectionKey.OP_READ);
 		this.sk.attach(this);
 		this.channelSelector.wakeup();
@@ -91,47 +93,46 @@ public class Handler implements Runnable {
 
 	// 2. 业务处理，此处是最重的业务层，交给线程池处理减轻 handler 负担，以便快速 Epoll
 	// 包含请求拦截与请求处理
-	public void process() {
-
-		// 当场包装一个 Runnable，扔给线程池
-		class InnerRunnable implements Runnable {
-			@Override
-			public void run() {
-				Router router = context.searchRouter(req.getMethod(), req.getUrl());	// 搜索路由哈希表，O(1)
-				boolean intercepted = false;
-				try {
-					// 1. 请求拦截
-					ArrayList<Method> interceptorMethods = context.getInterceptors();		// 取得拦截器列表
-					for(Method singleInterceptMethod : interceptorMethods) {
-						Boolean execResult = (Boolean) singleInterceptMethod.invoke(null, req, resp);		// 执行拦截器逻辑
-						// 请求被拒绝
-						if(execResult == false) {
-							LOG.WARN("请求未能通过过滤器");
-							intercepted = true;
-							break;
-						}
+	// 当场包装一个 Runnable，扔给线程池
+	class InnerRunnable implements Runnable {
+		@Override
+		public void run() {
+			Router router = context.searchRouter(req.getMethod(), req.getUrl());	// 搜索路由哈希表，O(1)
+			boolean intercepted = false;
+			try {
+				// 1. 请求拦截
+				ArrayList<Method> interceptorMethods = context.getInterceptors();		// 取得拦截器列表
+				for(Method singleInterceptMethod : interceptorMethods) {
+					Boolean execResult = (Boolean) singleInterceptMethod.invoke(null, req, resp);		// 执行拦截器逻辑
+					// 请求被拒绝
+					if(execResult == false) {
+						LOG.WARN("请求未能通过过滤器");
+						intercepted = true;
+						break;
 					}
-					
-					// 2. 请求处理
-					if(intercepted == false) {
-						if(router == null) {
-							LOG.WARN(String.format("找不到正确处理此请求的Controller %s %s，它可能是资源路径", req.getMethod(), req.getUrl()));
-							viewObject = req.getUrl();		// 找不到 Controller，先认为它是资源路径
-						} else {
-							viewObject = router.getHandlerMethod().invoke(null, req, resp);		// 否则，视图对象是 Controller 的返回值
-						}
-					}
-					
-				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-					e.printStackTrace();
 				}
 				
-				status = SEND;
-				sk.interestOps(SelectionKey.OP_WRITE);
-				channelSelector.wakeup();
+				// 2. 请求处理
+				if(intercepted == false) {
+					if(router == null) {
+						LOG.WARN(String.format("找不到正确处理此请求的Controller %s %s，它可能是资源路径", req.getMethod(), req.getUrl()));
+						viewObject = req.getUrl();		// 找不到 Controller，先认为它是资源路径
+					} else {
+						viewObject = router.getHandlerMethod().invoke(null, req, resp);		// 否则，视图对象是 Controller 的返回值
+					}
+				}
+				
+			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+				e.printStackTrace();
 			}
+			
+			status = SEND;
+			sk.interestOps(SelectionKey.OP_WRITE);
+			channelSelector.wakeup();
 		}
+	}
 
+	public void process() {
 		threadPool.execute(new InnerRunnable());
 	}
 

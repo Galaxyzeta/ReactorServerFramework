@@ -1,0 +1,49 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "java",
+			"name": "Debug (Launch) - Current File",
+			"request": "launch",
+			"mainClass": "${file}"
+		},
+		{
+			"type": "java",
+			"name": "Debug (Launch)-BlockingIOServer<JavaServer_36cf9936>",
+			"request": "launch",
+			"mainClass": "com.galaxyzeta.server.deprecated.BlockingIOServer",
+			"projectName": "JavaServer_36cf9936"
+		},
+		{
+			"type": "java",
+			"name": "Debug (Launch)-WebClient<JavaServer_36cf9936>",
+			"request": "launch",
+			"mainClass": "com.galaxyzeta.server.deprecated.WebClient",
+			"projectName": "JavaServer_36cf9936"
+		},
+		{
+			"type": "java",
+			"name": "Debug (Launch)-CommonTest<JavaServer_36cf9936>",
+			"request": "launch",
+			"mainClass": "test.unit.CommonTest",
+			"projectName": "JavaServer_36cf9936"
+		},
+		{
+			"type": "java",
+			"name": "Debug (Launch)-IocTest<JavaServer_36cf9936>",
+			"request": "launch",
+			"mainClass": "test.unit.IocTest",
+			"projectName": "JavaServer_36cf9936"
+		},
+		{
+			"type": "java",
+			"name": "Debug (Launch)-ServerInitTest<JavaServer_36cf9936>",
+			"request": "launch",
+			"mainClass": "test.unit.ServerInitTest",
+			"projectName": "JavaServer_36cf9936"
+		}
+	]
+}

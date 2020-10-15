@@ -23,6 +23,11 @@ public class ViewResolver {
 		STATIC_PATH = context.getStaticPath();
 	}
 
+	public void setContext(WebApplicationContext context) {
+		this.context = context;
+		STATIC_PATH = context.getStaticPath();
+	}
+
 	public void resolve(Object viewObject, HttpResponse resp) {
 		if(viewObject instanceof HttpResponse) {
 			LOG.INFO("按照 [HttpResponse] 的方式处理视图");
@@ -36,7 +41,7 @@ public class ViewResolver {
 
 	private void resourceResolver(Object viewObject, HttpResponse resp) {
 		String resource = (String)viewObject;
-		String filePath = STATIC_PATH+"/"+resource;
+		String filePath = STATIC_PATH+resource;
 		Matcher matcher = RESOURCES_REGEX.matcher(resource);
 		if (matcher.matches()) {
 			LOG.INFO("按照 [资源] 方式处理视图");

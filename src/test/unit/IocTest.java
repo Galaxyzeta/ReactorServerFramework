@@ -10,7 +10,7 @@ import test.entity.User;
 /**
  * 测试 Ioc bean 注册，依赖注入，后置处理器是否正常工作
  */
-public class DefinitionRegisterTest {
+public class IocTest {
 	public static void main(String[] args) throws Exception {
 		
 		IocContainer context = new IocContainer("src/test/bean.xml");

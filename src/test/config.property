@@ -4,3 +4,5 @@ interceptor-base-pacakge: test/interceptor
 interceptors: MyInterceptor1, MyInterceptor2
 static: src/static
 ioc-xml-path: src/test/iocxml/bean.xml
+use-main-sub-reactor: false
+sub-reactor-count: 2
