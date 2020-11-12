@@ -1,5 +1,7 @@
 package com.galaxyzeta.util;
 
+import java.util.HashMap;
+
 import com.galaxyzeta.http.HttpResponse;
 
 public class ResponseFactory {
@@ -18,5 +20,11 @@ public class ResponseFactory {
 
 	public static HttpResponse getInternalServerError() {
 		return new HttpResponse("500", "ERROR", null);
+	}
+
+	public static void setNotFound(HttpResponse resp) {
+		resp.setStatusCode("404");
+		resp.setResponseBody("NOT FOUND!");
+		resp.setStatusDescription("NOT_FOUND");
 	}
 }

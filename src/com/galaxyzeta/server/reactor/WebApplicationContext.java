@@ -109,11 +109,12 @@ public class WebApplicationContext {
 
 	// 注册拦截器
 	private void interceptorRegistration() {
-		String interceptorBase = CONFIGS.get("interceptor-base-pacakge").trim();
+		String interceptorBase = CONFIGS.get("interceptor-base-pacakge");
 		if(interceptorBase == null) {	
 			LOG.WARN("拦截器根目录没有定义，放弃配置拦截器");
 			return;
 		}
+		interceptorBase = interceptorBase.trim();
 		String[] _interceptors = CONFIGS.getOrDefault("interceptors", "").split(",");
 		String interceptorClassName = null;
 
@@ -145,6 +146,17 @@ public class WebApplicationContext {
 			}
 		}
 	}
+
+	// 配置 controller 
+	public void controllerRegistration() {
+		if(CONFIGS.get("controller-base-package") != null) {
+			packageScanner(CONFIGS.get("controller-base-package"), CONTROLLERS);
+			controllerAnnotationRegister();
+			LOG.INFO("业务逻辑处理器 解析成功");
+		} else {
+			LOG.INFO("没有发现业务逻辑处理器，跳过...");
+		}
+	}
 	
 	// 运行一个Reactor架构的服务器
 	public void runApplication(String configFile) {
@@ -170,9 +182,7 @@ public class WebApplicationContext {
 		LOG.INFO("Ioc容器初始化成功");
 
 		// Controller 注册，基于注解
-		packageScanner(CONFIGS.get("controller-base-package"), CONTROLLERS);
-		controllerAnnotationRegister();
-		LOG.INFO("业务逻辑处理器 解析成功");
+		controllerRegistration();
 
 		// Interceptor 注册，根据 XML 配置注册
 		interceptorRegistration();
@@ -188,6 +198,7 @@ public class WebApplicationContext {
 			// 单 Reactor 模型
 			server = new SingleReactorServer(Integer.parseInt(port), this);
 		}
+		// Logger.disabled = true;
 		server.run();
 	}
 }

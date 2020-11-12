@@ -76,4 +76,9 @@ public class HttpRequest {
 		sb.append("\n").append(requestBody);
 		return sb.toString();
 	}
+
+	// Common
+	public String getHeader(String header) {
+		return requestHeaders.get(header);
+	}
 }

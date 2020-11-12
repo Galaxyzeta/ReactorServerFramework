@@ -1,13 +1,19 @@
-package com.galaxyzeta.util;
+package com.galaxyzeta.parser;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.galaxyzeta.http.HttpResponse;
 import com.galaxyzeta.server.reactor.WebApplicationContext;
+import com.galaxyzeta.util.Logger;
+import com.galaxyzeta.util.LoggerFactory;
+import com.galaxyzeta.util.ResponseFactory;
+
 
 public class ViewResolver {
 
@@ -33,9 +39,9 @@ public class ViewResolver {
 			LOG.INFO("按照 [HttpResponse] 的方式处理视图");
 		} else if (viewObject instanceof String) {
 			resourceResolver(viewObject, resp);
-		} else {
-			LOG.INFO("视图无法被正确解析，按 [404 NOT FOUND] 处理");
-			resp = ResponseFactory.getNotFound();
+		} else if (viewObject != null){
+			LOG.INFO("按照 Json 解析进行处理");
+			resp.setResponseBody(JasonConverter.convert(viewObject));
 		}
 	}
 
@@ -47,19 +53,23 @@ public class ViewResolver {
 			LOG.INFO("按照 [资源] 方式处理视图");
 			try {
 				File fp = new File(filePath);
-				FileReader fr = new FileReader(fp);
-				int k;
-				StringBuffer sb = new StringBuffer();
-				while((k = fr.read()) != -1) {
-					sb.append((char)k);
+				BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fp)));
+
+				StringBuilder sb = new StringBuilder();
+				int c;
+				while((c = br.read()) != -1) {
+					sb.append((char)c);
 				}
 				resp.setResponseBody(sb.toString());
-				fr.close();
+				br.close();
+
+				LOG.INFO("资源 "+ filePath + "解析完毕");
 			} catch (IOException ioe) {
+				ResponseFactory.setNotFound(resp);
 				LOG.ERROR(String.format("文件%s未找到，或其他IO异常", filePath));
 			}
 		} else {
-			resp = ResponseFactory.getNotFound();
+			ResponseFactory.setNotFound(resp);
 			LOG.ERROR(String.format("文件%s不是合法的资源", filePath));
 		}
 	}

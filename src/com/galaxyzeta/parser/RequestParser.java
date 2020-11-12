@@ -11,6 +11,8 @@ import java.util.HashMap;
 
 import com.galaxyzeta.exceptions.IllegalRequestException;
 import com.galaxyzeta.http.HttpRequest;
+import com.galaxyzeta.util.Logger;
+import com.galaxyzeta.util.LoggerFactory;
 
 public class RequestParser {
 
@@ -20,6 +22,7 @@ public class RequestParser {
 	private static final int IO_PARSER = 1;
 	private static final int NIO_PARSER = 2;
 	private int parserMode;
+	private static Logger LOG = LoggerFactory.getLogger(RequestParser.class);
 
 	public RequestParser(InputStream istream) {
 		this.reader = new BufferedReader(new InputStreamReader(istream));
@@ -72,21 +75,33 @@ public class RequestParser {
 		}
 		req.setBody(sb.toString());
 
+		LOG.INFO("请求解析完毕 " + req.getMethod() +" "+ req.getUrl());
 		return req;
 	}
 
 	private HttpRequest NIOParser() throws IOException{
 		ByteBuffer buffer = ByteBuffer.allocate(1024);
 		StringBuffer sb = new StringBuffer();
-		while (clientSocket.read(buffer) > 0) {
+		// 读取 buffer -> stringBuilder
+		int bts;
+		while ((bts = clientSocket.read(buffer)) > 0) {
 			buffer.flip();
 			while(buffer.hasRemaining()) {
 				sb.append((char)buffer.get());
 			}
+			buffer.clear();
 		}
-		// Change parser
+		if(bts == 0) {
+			// 数据已经全部接收
+			LOG.INFO("Request读取完成");
+		} else {
+			// 连接被中止，外部进行处理
+			LOG.WARN("request解析过程，没有多余内容，准备shutdown...");
+			return null;
+		}
+
 		String target = sb.toString();
-		if(target != null) {
+		if(target != null && !target.trim().equals("")) {
 			this.reader = new BufferedReader(new StringReader(target));
 			return IOparser();
 		} else {

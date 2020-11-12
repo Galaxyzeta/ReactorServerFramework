@@ -6,14 +6,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class IocContainer {
 	private final ConcurrentHashMap<String, BeanDefinition> registry = new ConcurrentHashMap<>();
-	private final ArrayList<BeanPostProcessor> beanPostProcessors = new ArrayList<>();
-
+	private final CopyOnWriteArrayList<BeanPostProcessor> beanPostProcessors = new CopyOnWriteArrayList<>();
 	private String xmlPath;
 	private final Object singletonLock = new Object();
-	
 	
 	// constructor
 	public IocContainer(String xmlPath) {

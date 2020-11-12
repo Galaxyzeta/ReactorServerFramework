@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans>
 
-	<bean name="viewResolver" class="com.galaxyzeta.util.ViewResolver"></bean>
+	<bean name="viewResolver" class="com.galaxyzeta.parser.ViewResolver"></bean>
 
 	<bean name="loggerfactory" class="com.galaxyzeta.util.LoggerFactory"></bean>
 	<bean name="tom" class="test.entity.User" init-method="init">

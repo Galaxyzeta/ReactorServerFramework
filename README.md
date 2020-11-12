@@ -1,86 +1,66 @@
-# 基于Reactor架构的web服务器及其web开发框架
+# 基于Reactor架构的http服务器及其开发框架
 
-> 一个用原生 Java 实现的 NIO http服务器，模仿 Springboot 和 SpringMVC，实现了请求解析，controller，interceptor，视图解析等基本功能。**不需要用到任何第三方包。**
->
-> 作者：@ Galaxyzeta
+## 概述
 
-## 摘要
+这是一个用原生 Java NIO 包实现的 http服务器，在此基础上，我们还提供了如下功能，使它更像一个开发框架！
 
-作者 @Galaxyzeta 做过一段时间的 web 开发，熟悉 SpringBoot，SpringMVC，对其原理有了一定的了解。突然有一天，憨憨作者突发奇想，要做个服务器玩玩，服务器做到一半，作者意外发现服务器设计的可拓展性较强，可以额外再此基础上做个 Web 服务框架，于是就有了这个东西。
+- Interceptor
+- Controller
+- 视图解析
+- Ioc 容器
 
-项目的服务器设计采用基础 Reactor 架构，框架的设计参考了 Spring MVC，SPring Boot 的部分设计，实现方法可能不同，但原理就那么回事。
+该项目没有使用 jdk 之外的第三方包。
 
-只能算是个玩具级项目，如果想拿来研究一下服务器原理，Mvc 原理，作者@Galaxyzeta 表示十分欢迎。
-
-**如果这个项目对你有帮助，给作者一个 Star 吧**
-
-关键词：**Reactor 架构** | **Web开发框架** | **NIO编程** | **反射** | **线程池**
-
-
+喜欢这个项目吗？给作者一颗星表达你的支持！
 
 ## 快速上手
 
-项目非常容易使用，简单来说有以下几步：
+本代码包含了一个实例，通过这个示例你可以了解到具体的内容。
 
-1. 设置配置文件。
+1. 使用配置文件进行Ioc注入。
+2. 构建拦截器。
+3. 用Controller实现业务逻辑处理。
 
-2. 编写控制器和拦截器。
-
-3. 启动服务器。
-
-我以一个简单的项目 Demo 来演示一下项目的基本功能和使用方法：
-
-项目结构：
+项目结构概述：
 
 ```txt
 + src
 |___+ com
     |___ ... ... 这里是框架和服务器代码
 |___+ test
-    |___+ controller
+    |___+ controller            <--- 控制器
         |___MyController.java
-    |___+ interceptor
+    |___+ interceptor           <--- 拦截器
         |___MyInterceptor1.java
         |___MyInterceptor2.java
-    |___+ static
-        |___+ html
-            |___index.html
-        |___+ css
-            |___mycss.css
-        |___+ javascript
-            |___myjs.js
-    |___TestAPI.java
+    |___+ unit
+        |___ServerInit.java     <--- 应用程序启动类
+    |___+ iocxml                <--- Ioc 配置
+        |___ bean.xml
+    |___config.property         <--- 整体配置
+|___+ static                    <--- 静态资源
+    |___+ html
+        |___index.html
+    |___+ css
+        |___mycss.css
+    |___+ javascript
+        |___myjs.js
 
 ```
-
-### 服务启动
-
-首先你需要一个启动整个应用程序的类，在这里他是 `TestAPI.java` 。
-
-```java
-package test;
-
-import com.galaxyzeta.server.reactor.WebApplicationContext;
-
-public class TestAPI {
-    public static void main(String[] args) {
-        WebApplicationContext.runApplication("src/test/config.property");
-    }
-}
-```
-
-很简单，调用 `WebApplicationContext.runApplication(String configPath)` 就能启动项目。其中，参数是配置文件相对当前工作目录的相对地址，或指定一个绝对地址。
 
 ### 配置文件
 
-看一下配置文件：
+以下是 config.property 的内容：
 
 ```txt
-port: 8080
+port: 18080
 controller-base-package: test/controller
 interceptor-base-pacakge: test/interceptor
 interceptors: MyInterceptor1, MyInterceptor2
-static: src/test/static
+static: src/static
+ioc-xml-path: src/test/iocxml/bean.xml
+use-main-sub-reactor: true
+sub-reactor-count: 1
 ```
 
 参数说明：
@@ -95,9 +75,32 @@ static: src/test/static
 
 **static**: 静态资源存放根目录。
 
+**ioc-xml-path**: Ioc容器功能的配置文件。
+
+**use-main-sub-reactor**: 是否使用主从reactor模型，如果 false，使用的是单 reactor 模型。
+
+**sub-reactor-count**: 从 reactor（netty 的 worker）数量。
+
+### 启动应用程序
+
+ `ServerInit.java` 中包含了 `main` 方法。
+
+```java
+package tutorial;
+
+import com.galaxyzeta.server.reactor.WebApplicationContext;
+
+public class MyApplication {
+	public static void main(String[] args) {
+		new WebApplicationContext().runApplication("src/tutorial/config.property");
+	}
+}
+
+```
+
 ### 控制器
 
-然后让我们写一个简单的控制器，`MyController.java`
+`MyController.java` 包含了业务逻辑控制器的写法。
 
 ```java
 package test.controller;
@@ -108,29 +111,47 @@ import com.galaxyzeta.http.HttpResponse;
 import com.galaxyzeta.server.reactor.Controller;
 import com.galaxyzeta.util.Logger;
 import com.galaxyzeta.util.LoggerFactory;
+import com.galaxyzeta.util.ResponseFactory;
 
 public class MyController implements Controller {
 
-    // 从 LoggerFactory 取得一个 Logger，用于日志记录
-    private static Logger LOG = LoggerFactory.getLogger(MyController.class);
+	private static Logger LOG = LoggerFactory.getLogger(MyController.class);
 
-    @RequestMapping(method = "GET", url = "/debug")
-    public static Object debugGet(HttpRequest req, HttpResponse resp) {
-        LOG.DEBUG("GET /debug invoked OK");
-        return "html/index.html";
-    }
+	@RequestMapping(method = "GET", url = "/debug")
+	public static Object debugGet(HttpRequest req, HttpResponse resp) {
+		LOG.DEBUG("GET /debug invoked OK");
+		return "html/index.html";
+	}
+
+	@RequestMapping(method = "GET", url = "/json")
+	public static Object debugPost(HttpRequest req, HttpResponse resp) {
+		LOG.DEBUG("POST /debug invoked OK");
+		HttpResponse myResponse = ResponseFactory.getSuccess();
+		resp.setResponseBody("Hello this is a json view object!");
+		// resp.setResponseBody("hello this is a response body");
+		return myResponse;
+	}
 }
 ```
 
-简单的解释一下这个控制器，这个控制器包含一个处理 GET /debug 请求的方法，方法运行时，先输出一段日志，然后返回 `html/index.html` 这个**视图对象**。
+目前控制器支持的内容：
 
-说明：
+1. GET/POST/PUT/DELETE 方法的解析。
+2. 执行指定 url 相应的业务逻辑。
+3. 返回 **视图字符串** 或者 **HttpResponse**
 
-- 控制器必须放在配置文件指定的包下，且不能是包内的子包。
+简单的解释一下这个控制器：这个控制器包含两个方法：
 
-- 控制器的设计和 Spring Boot 十分相似，作为控制器的方法必须附带 `@RequestMapping(method = "xxx", url = "xxx")`，一个 Controller 实现类中可以附带多个业务逻辑方法。
+- 一个处理 GET /debug 请求的方法，方法被invoke时，返回 `html/index.html` 这个**视图对象**。
+- 一个处理 POST /debug 请求的方法，方法在运行时返回 myResponse 对象视图。
 
+**一些重要说明**：
+
+- 控制器必须放在配置文件指定的包下，否则不会被检测到。
+- 作为控制器的方法必须附带 `@RequestMapping(method = "xxx", url = "xxx")`。
 - 项目对业务逻辑方法的限制：必须是 `public static`，参数必须有 `HttpReqeust` 和 `HttpResponse`。
+- 如果 controller 方法返回 null，参数 resp 将被作为 Response 写回给浏览器。
+- 如果 controller 方法返回视图物体，参数 resp 不会起到作用。
 
 ### 拦截器
 
@@ -156,15 +177,17 @@ public class MyInterceptor1 implements Interceptor {
 }
 ```
 
-这两个拦截器什么都没干，只是输出日志，并返回 `true`，返回 `true` 的含义是放行，请求将前往下一个拦截器接受检查。当然你可以对 request 进行检查，禁止某些 request 通过拦截器，只需返回  `false` 即可。
+这两个拦截器什么都没干，只是输出日志，并返回 `true`。
 
-根据配置文件，MyInterceptor1 首先作用，而 MyInterceptor2 将在请求通过前置拦截器的检查后发挥作用。
+返回 `true` 的含义是放行，请求将前往下一个拦截器接受检查。当然你可以对 request 进行检查，禁止某些 request 通过拦截器，只需返回  `false` 即可。
 
-说明：
+根据配置文件决定拦截器执行顺序。MyInterceptor1 首先作用，而 MyInterceptor2 将在请求通过前置拦截器的检查后发挥作用。
+
+**一些重要说明：**
 
 - 拦截器必须放在指定的包下。
-
 - 拦截器的方法规范：必须是 `public static boolean intercept(HttpRequest req, HttpResponse resp)` 不能有任何变动。
+- 若你的某个拦截器返回 `false` ，控制器方法不会被执行，参数 resp 将作为最终 response 被写回浏览器。
 
 ### 运行Demo
 
@@ -198,52 +221,80 @@ public class MyInterceptor1 implements Interceptor {
 
 按下按钮可以弹出一个 `alert` ，下面的文字是青色，则说明项目已经运行成功。
 
-
-
 ## 项目架构
 
 下面简单的描述以下 Reactor Server 和 开发框架的工作过程。
 
 ### ReactorServer 运作流程
 
-![Reactor Server](https://github.com/Galaxyzeta/pictureBed/blob/master/ReactorServerAndMVC.png?raw=true)
+我以主从 Reactor 为例，讲解项目启动的过程：
 
-核心类有两个：
+1. `WebApplication.runApplication` 启动应用程序上下文。
+2. `WebApplication` 启动过程中，读取 `config.property` 和 `bean.xml` ，使用反射特性初始化 Ioc 容器，配置拦截器，控制器，最后调用 `MainSubReactorServer` 的 `run` 方法开启服务器。
+3. `MainSubReactorServer` 初始化，创建若干 SubReactor 线程并开始运行。
+4. 此时浏览器发来一个请求。主线程实际上是 Acceptor，通过多路复用器发现连接事件后，Acceptor 调用 `accept` 接收连接，并通过 round-robin 选择一个 subReactor 负责处理 SocketChannel。
+5. subReactor 将 SocketChannel 和它的 Selector 绑定，随即注册 Read 事件。
+6. `Handler` 是业务逻辑处理的核心。每个 `Handler` 对应一个 SocketChannel 的业务逻辑处理流程，通过调用 `execute` 方法，可以使得 `Handler` 进行相应事件的处理。`Handler` 内部分别维护了一个 `request` `response` `viewObject`对象，它们会在整个处理流程中被反复使用。
+7. 此时浏览器发来一些数据。SubReactor 检测到 Read 事件可用。调用 `execute`，`Handler` 发现这是 Read 事件，调用 Read 处理流程。
+8. 在 Read 处理流程中，分为以下部分：
+   - 从 SocketChannel 读取数据，解析请求。
+   - 调用拦截器组的拦截方法，对请求进行拦截。
+   - 若通过拦截，检测 `request` 对应的 `Controller`。
+   - 调用对应 `Controller` ，过程中可以操作 `response` 对象，可以返回 `viewObject`
 
-`ReactorServer` 是服务器主体，Epoll 模型写在这里，这个类有一个 dispatch 方法处理被 epoll 方法选中的 Channel，它通过调用 Channel 附件 handler 的 run 方法，进入 handler 处理流程；
+9. Read 事件处理完毕后注册 Write 事件。
+10. Write 事件被 SubReactor 的 selector 检测到，subReactor 调用 `Handler` 的 `execute` 方法使得 `Handler` 进行处理。
+11. Write 流程主要是视图解析。视图解析包含以下内容：
+    - 若 `viewObject` 是字符串，将它作为静态资源处理。
+    - 若 `viewObject` 是 `HttpResponse` ，将它作为相应直接返回。
+    - 若请求解析失败，返回一个 404 的响应。
+12. 浏览器收到响应，展示结果。此时 SocketChannel 关闭。
 
-`Handler` 类负责完整的流程处理，包含请求解析，请求拦截，请求处理，视图解析，响应返回整个流程处理。它重点维护三个对象，response，request，viewObject。一个 SocketChannel 将附带一个 handler 对象。
+### Ioc 框架的设计
 
-1. 浏览器发起请求到达 ReactorServer。Selector（图中的Multiplexing，MUX）检测到 OP_ACCEPT 事件可用，故接收一个 TCP 连接。此过程生成一个绑定了 handler 的 SocketChannel，然后把它注册到 Selector 上，事件定义为 OP_READ（可读）。
+1. `IocContainer` 调用 `init()` 方法，开始初始化 Ioc 容器。
 
-2. Selector 检测到 OP_READ 事件就绪，选出可用的 Channel 并通过 dispatch 调用 run 方法。run 方法中判断其状态为 READ，故执行 read() 方法。
+以下是 `IocContainer` 类的概要：
+```java
+public class IocContainer {
+    private final ConcurrentHashMap<String, BeanDefinition> registry = new ConcurrentHashMap<>();
+    private final ArrayList<BeanPostProcessor> beanPostProcessors = new ArrayList<>();
 
-3. read() 方法解析 request，把它变成一个 HttpRequest 对象，存储在 handler 的成员属性中。此时所有读取已经完成，对其 shutdown input 避免 epoll 时再次被选中。
+    private String xmlPath;
+    private final Object singletonLock = new Object();
+    
+    ...
 
-4. 随后 read() 调用 process()，在 process 方法中，业务逻辑被封装成一个内部类，把它扔给线程池处理。具体来说，业务逻辑包含了 Interceptor 拦截和 Controller 业务处理。
+}
+```
 
-5. 线程池完成处理后，将 handler 内置状态标记为 SEND，同时将 Channel 的事件改为 OP_WRITE（可写）。
-
-6. 视图解析。根据 handler 维护的 viewObject 类型判断如何填写 response。若 Controller 返回的 Object 是 String，试图进行资源解析；若返回值类型为 HttpResponse，则不用解析。
-
-7. 发回 client，shutdown output 并关闭 socketChannel。至此一次传输完成，浏览器应显示结果。
-
+2. 首先读取 xml。将 bean 配置文件写入 `BeanDefinition`。读取 xml 文件用到了 dom4j 的支持。这些 `BeanDefinition` 将被放入 `IocContainer` 的 `registry` 变量中。
    
+   以下是 `beanDefinition` 类的概要：
+   ```java
+   public class BeanDefinition {
+	    private String name;
+	    private String classname;
+	    private String initMethod;
+	    private ArrayList<PropertyValue> prop = new ArrayList<>();
+        private Object bean;
+        
+        ...
+   }
+   ```
+2. 注册 bean 后置处理器。通过 by-type 寻找 `registry` 中类型为 `BeanPostProcessor` 的 bean 定义，然后写入 `IocContainer` 的 `beanPostProcessors` 列表。
+3. 创建 bean。遍历 `registry`，依次创建 bean。若发现此 bean 有需要注入的基本类型依赖，则直接创建基本类型变量并注入。若发现此 bean 有 ref 型注入，则转向创建 ref 指向的 bean，然后再注入。（不能解决循环依赖）
+4. 调用注册的 beanPostProcessor，对所有 bean 进行初始化。
+5. 至此 `IocContainer` 初始化完成。
 
-### ReactorServer 启动流程
+### 更新记录
 
-启动流程包含了对配置文件的扫描，Controller 包扫描，Interceptor 注册。用到了反射技术。
+- 修改线程模型，抛弃使用线程池处理。
+- 增加 `JasonConverter` ，提供对 `Object` 对象的解析支持。
+- 提供了包扫描的递归支持。
 
-所有的初始化过程全部放在 `WebApplicationContext` 完成，具体内容请看项目吧。
 
+### To-do
 
-
-## Todo List
-
-一些可能在将来加入的功能。敬请期待！
-
-1. 增加控制反转和依赖注入容器。
-2. 增加 POST 方法的更便捷支持。
-3. 增加对 xml，yml等文件的解析支持。
-4. 增加模板引擎功能，并新增模板引擎视图解析。
-5. 服务器进一步优化。
+- 编写一个像 mybatis 那样的，基于 jdbc 的持久层框架。
+- 对于 Ioc 的注入，提供基于注解的支持。

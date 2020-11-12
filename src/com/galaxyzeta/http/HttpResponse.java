@@ -4,11 +4,11 @@ import java.util.HashMap;
 import java.util.Set;
 
 public class HttpResponse {
-	private String statusCode;
-	private String statusDescription;
+	private String statusCode = "200";
+	private String statusDescription = "OK";
 	private String version = "HTTP/1.1";
 	private String responseBody;
-	private HashMap<String, String> responseHeaders;
+	private HashMap<String, String> responseHeaders = new HashMap<>();
 	// Constructor
 	public HttpResponse() {}
 
@@ -69,5 +69,10 @@ public class HttpResponse {
 		}
 		sb.append("\n").append(responseBody);
 		return sb.toString();
+	}
+
+	// Common
+	public void addResponseHeader(String key, String value) {
+		responseHeaders.put(key, value);
 	}
 }

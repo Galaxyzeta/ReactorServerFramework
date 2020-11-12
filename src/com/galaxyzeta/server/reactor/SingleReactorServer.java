@@ -58,7 +58,6 @@ public final class SingleReactorServer extends ReactorServer {
 	 * 根据Selector选择结果进行分发
 	 * 耗时计算分发给线程池处理，避免拖慢反应核速度
 	 */
-	@Override
 	protected void dispatch(SelectionKey key) throws IOException {
 		Runnable task = (Runnable) key.attachment();
 		new Thread(task).run();
