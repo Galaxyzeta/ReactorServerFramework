@@ -293,6 +293,11 @@ public class IocContainer {
 - 增加 `JasonConverter` ，提供对 `Object` 对象的解析支持。
 - 提供了包扫描的递归支持。
 
+### 压力测试数据
+
+JMeter 压测，测试通过接口调用 controller 业务逻辑，获取静态页面数据。测试时使用 8 SubReactor。模拟 1000 线程同时获取。
+
+最终测试结果：253ms 平均响应速度，728ms 90%线，124ms 中位数响应速度。
 
 ### To-do
 

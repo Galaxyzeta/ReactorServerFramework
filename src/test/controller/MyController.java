@@ -20,13 +20,12 @@ public class MyController implements Controller {
 	@RequestMapping(method = "GET", url = "/debug")
 	public static Object debugGet(HttpRequest req, HttpResponse resp) {
 		LOG.DEBUG("GET /debug invoked OK");
-		return "html/index.html";
+		return "/html/index.html";
 	}
 
 	@RequestMapping(method = "GET", url = "/string")
 	public static Object debugString(HttpRequest req, HttpResponse resp) {
 		LOG.DEBUG("GET /string invoked OK");
-		HttpResponse myrResponse = ResponseFactory.getSuccess();
 		resp.setResponseBody("Hello this is a json view object!");
 		return null;
 	}

@@ -2,19 +2,12 @@ package com.galaxyzeta.parser;
 
 import java.util.List;
 import java.util.Map;
-import java.util.PrimitiveIterator;
 import java.util.Set;
 
 import java.lang.reflect.Field;
-import java.util.Arrays;
 import java.util.LinkedList;
 
-import com.galaxyzeta.util.Logger;
-import com.galaxyzeta.util.LoggerFactory;
-
 public class JasonConverter {
-
-	private static Logger LOG = LoggerFactory.getLogger(JasonConverter.class);
 
 	/** 根据传参类型进行 json 转化 */
 	public static String convert(Object obj) {

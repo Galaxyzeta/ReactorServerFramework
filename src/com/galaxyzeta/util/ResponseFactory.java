@@ -1,7 +1,5 @@
 package com.galaxyzeta.util;
 
-import java.util.HashMap;
-
 import com.galaxyzeta.http.HttpResponse;
 
 public class ResponseFactory {
