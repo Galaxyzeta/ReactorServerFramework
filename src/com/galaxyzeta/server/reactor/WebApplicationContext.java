@@ -12,6 +12,7 @@ import java.net.URL;
 
 import com.galaxyzeta.parser.ConfigParser;
 import com.galaxyzeta.server.ioc.IocContainer;
+import com.galaxyzeta.util.Constant;
 import com.galaxyzeta.util.Logger;
 import com.galaxyzeta.util.LoggerFactory;
 
@@ -47,7 +48,7 @@ public class WebApplicationContext {
 
 	// 对外提供获取static路径方法
 	public String getStaticPath() {
-		return CONFIGS.get("static");
+		return CONFIGS.get(Constant.STATIC);
 	}
 
 	// 对外提供获取 Ioc 容器的方法
@@ -109,13 +110,13 @@ public class WebApplicationContext {
 
 	// 注册拦截器
 	private void interceptorRegistration() {
-		String interceptorBase = CONFIGS.get("interceptor-base-pacakge");
+		String interceptorBase = CONFIGS.get(Constant.INTERCEPTOR_BASE_PACKAGE);
 		if(interceptorBase == null) {	
 			LOG.WARN("拦截器根目录没有定义，放弃配置拦截器");
 			return;
 		}
 		interceptorBase = interceptorBase.trim();
-		String[] _interceptors = CONFIGS.getOrDefault("interceptors", "").split(",");
+		String[] _interceptors = CONFIGS.getOrDefault(Constant.INTERCEPTORS, "").split(",");
 		String interceptorClassName = null;
 
 		for (String interceptor: _interceptors) {
@@ -149,13 +150,18 @@ public class WebApplicationContext {
 
 	// 配置 controller 
 	public void controllerRegistration() {
-		if(CONFIGS.get("controller-base-package") != null) {
-			packageScanner(CONFIGS.get("controller-base-package"), CONTROLLERS);
+		String pkg;
+		if((pkg = CONFIGS.get(Constant.CONTROLLER_BASE_PACKAGE)) != null) {
+			packageScanner(pkg, CONTROLLERS);
 			controllerAnnotationRegister();
 			LOG.INFO("业务逻辑处理器 解析成功");
 		} else {
 			LOG.INFO("没有发现业务逻辑处理器，跳过...");
 		}
+	}
+
+	public String getConfig(String configName) {
+		return CONFIGS.get(configName);
 	}
 	
 	// 运行一个Reactor架构的服务器
@@ -167,10 +173,10 @@ public class WebApplicationContext {
 		LOG.INFO("配置文件解析完毕");
 
 		// 赋予配置
-		String port = CONFIGS.getOrDefault("port", "8080");
+		String port = CONFIGS.getOrDefault(Constant.PORT, "8080");
 
 		// Ioc 容器注册
-		iocContainter = new IocContainer(CONFIGS.getOrDefault("ioc-xml-path", "src/iocxml/bean.xml"));
+		iocContainter = new IocContainer(CONFIGS.getOrDefault(Constant.IOC_XML_PATH, "src/iocxml/bean.xml"));
 		try {
 			LOG.INFO("=======初始化Ioc容器=======");
 			iocContainter.init();
@@ -189,11 +195,11 @@ public class WebApplicationContext {
 
 		// 服务器初始化
 		// --- 选择使用何种类型的服务器
-		boolean isMainSubReactor = Boolean.parseBoolean(CONFIGS.get("use-main-sub-reactor"));
+		boolean isMainSubReactor = Boolean.parseBoolean(CONFIGS.get(Constant.USE_MAIN_SUB_REACTOR));
 		ReactorServer server;
 		if(isMainSubReactor) {
 			// 主从 Reactor 模型
-			server = new MainSubReactorServer(Integer.parseInt(port), this, Integer.valueOf(CONFIGS.get("sub-reactor-count")));
+			server = new MainSubReactorServer(Integer.parseInt(port), this, Integer.valueOf(CONFIGS.get(Constant.SUB_REACTOR_COUNT)));
 		} else {
 			// 单 Reactor 模型
 			server = new SingleReactorServer(Integer.parseInt(port), this);

@@ -2,25 +2,18 @@ package com.galaxyzeta.server.reactor;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.SocketOption;
-import java.net.SocketOptions;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import com.galaxyzeta.entity.Router;
 import com.galaxyzeta.http.HttpRequest;
 import com.galaxyzeta.http.HttpResponse;
 import com.galaxyzeta.parser.RequestParser;
-
+import com.galaxyzeta.util.Constant;
 import com.galaxyzeta.util.Logger;
 import com.galaxyzeta.util.LoggerFactory;
 import com.galaxyzeta.parser.ViewResolver;
@@ -47,10 +40,6 @@ public class Handler {
 	private HttpRequest req = null;
 	private HttpResponse resp = new HttpResponse();
 	private Object viewObject = null;
-
-	// 线程池
-	private BlockingQueue<Runnable> processorQueue = new LinkedBlockingQueue<>();
-	private ExecutorService threadPool = new ThreadPoolExecutor(25, 200, 1, TimeUnit.SECONDS, processorQueue);
 
 	// 状态定义 READ(主线程) -> PROCESS(线程池) -> SEND(主线程)
 	private static final int READ = 1;
@@ -130,24 +119,35 @@ public class Handler {
 		// });
 	}
 
-	/** 处理写回，交给线程池处理 */
+	/** 处理写回 */
 	private void processWrite() {
 		// threadPool.execute(()->{
 			try {
 				// 视图解析部分，根据对象返回类型装配 response
 				viewResolver.resolve(viewObject, resp);
 
+				boolean keepAlive = context.getConfig(Constant.CONNECTION_KEEP_ALIVE).equals("true");
+				resp.addResponseHeader("Content-Length", Integer.toString(resp.getResponseBody().length()));
+				if(keepAlive) {
+					resp.addResponseHeader("Connection", "Keep-Alive");
+					resp.addResponseHeader("Keep-Alive", String.format("timeout=%d, max=%d", 
+						Integer.parseInt(context.getConfig(Constant.KEEP_ALIVE_TIMEOUT)),
+						Integer.parseInt(context.getConfig(Constant.KEEP_ALIVE_MAX))
+					));
+				}
+
 				ByteBuffer buffer = ByteBuffer.wrap(resp.toString().getBytes());
 				clientSocket.write(buffer);
 				
 				// 此处若直接断开C/S连接，则变为短连接
-				clientSocket.shutdownOutput();
-				sk.cancel();
-				// 在此将状态置为可读
-				
-				//sk.interestOps(SelectionKey.OP_READ);
-				//status = READ;
-				//channelSelector.wakeup();
+				if(!keepAlive ) {
+					clientSocket.shutdownOutput();
+					sk.cancel();
+				} else {
+					sk.interestOps(SelectionKey.OP_READ);
+					status = READ;
+					channelSelector.wakeup();
+				}
 				
 			} catch (Exception e) {
 				e.printStackTrace();

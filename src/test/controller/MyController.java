@@ -8,7 +8,6 @@ import com.galaxyzeta.http.HttpResponse;
 import com.galaxyzeta.server.reactor.Controller;
 import com.galaxyzeta.util.Logger;
 import com.galaxyzeta.util.LoggerFactory;
-import com.galaxyzeta.util.ResponseFactory;
 
 import test.pojo.MyHttpResult;
 import test.pojo.QueryList;

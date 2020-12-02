@@ -9,7 +9,7 @@ import com.galaxyzeta.util.Logger;
 public class ServerInitTest {
 	public static void main(String[] args) {
 		// "D:/--FILE DATA--/VSWorkSpace/JavaServer/config/config.property"
-		Logger.disabled = true;
+		Logger.disabled = false;
 		new WebApplicationContext().runApplication("src/test/config.property");
 	}
 }
