@@ -10,7 +10,7 @@ public class PropertyValue {
 	}
 
 	// constructor
-	PropertyValue(String name, Object value, Type type) {
+	public PropertyValue(String name, Object value, Type type) {
 		this.name = name;
 		this.value = value;
 		this.type = type;

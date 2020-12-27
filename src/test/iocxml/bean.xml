@@ -4,15 +4,26 @@
 	<bean name="viewResolver" class="com.galaxyzeta.parser.ViewResolver"></bean>
 
 	<bean name="loggerfactory" class="com.galaxyzeta.util.LoggerFactory"></bean>
+	
 	<bean name="tom" class="test.entity.User" init-method="init">
 		<property name="address" ref="tomAddress"/>
 		<property name="username" value="tom"/>
 		<property name="password" value="helloworld"/>
 	</bean>
+	
 	<bean name="tomAddress" class="test.entity.Address">
 		<property name="city" value="Cyber City"/>
 		<property name="street" value="Neon Avenue"/>
 	</bean>
+	
+	<bean name="cycleInjection" class="test.entity.CycleInjection">
+		<property name="cycleInjection" ref="cycleInjection2"/>
+	</bean>
+	
+	<bean name="cycleInjection2" class="test.entity.CycleInjection2">
+		<property name="cycleInjection" ref="cycleInjection"/>
+	</bean>
+
 	<bean name="postProcessor1" class="test.entity.MyBeanPostProcessor"></bean>
 	<bean name="postProcessor2" class="test.entity.MyBeanPostProcessor2"></bean>
 </beans>

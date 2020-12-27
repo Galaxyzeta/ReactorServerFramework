@@ -8,6 +8,7 @@ public class BeanDefinition {
 	private String initMethod;
 	private ArrayList<PropertyValue> prop = new ArrayList<>();
 	private Object bean;
+	private boolean completed = false;
 
 	// constructor
 	public BeanDefinition(String name, String classname, String initMethod) {
@@ -32,6 +33,9 @@ public class BeanDefinition {
 	public String getInitMethod() {
 		return initMethod;
 	}
+	public boolean getCompleted() {
+		return completed;
+	}
 	
 	// setter
 	public void setClassname(String classname) {
@@ -48,5 +52,8 @@ public class BeanDefinition {
 	}
 	public void setInitMethod(String initMethod) {
 		this.initMethod = initMethod;
+	}
+	public void setCompleted(boolean completed) {
+		this.completed = completed;
 	}
 }

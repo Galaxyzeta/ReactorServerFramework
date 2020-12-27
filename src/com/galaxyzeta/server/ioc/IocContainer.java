@@ -29,13 +29,16 @@ public class IocContainer {
 	}
 
 	/**
-	 * 注册 Bean 后置处理器
+	 * 添加 Bean 后置处理器
 	 * @param beanPostProcessor
 	 */
 	private void addBeanPostProcessor(BeanPostProcessor beanPostProcessor) {
 		this.beanPostProcessors.add(beanPostProcessor);
 	}
 
+	/**
+	 * 注册后置处理器
+	 */
 	private void registerBeanPostProcessors() throws Exception {
 		List<Object> list = getBeansByType(BeanPostProcessor.class);
 		for(Object processor: list) {
@@ -43,7 +46,10 @@ public class IocContainer {
 		}
 	}
 
-	public List<Object> getBeansByType (Class<?> clazz) {
+	/**
+	 * 根据类找 bean
+	 */
+	public List<Object> getBeansByType(Class<?> clazz) {
 		ArrayList<Object> resList = new ArrayList<>();
 		for(Iterator<Entry<String, BeanDefinition>> i = registry.entrySet().iterator(); i.hasNext();) {
 			Entry<String, BeanDefinition> entry = i.next();
@@ -54,9 +60,7 @@ public class IocContainer {
 					doCreateBean(beanDefinition);
 					resList.add(beanDefinition.getBean());
 				}
-			} catch (Exception e) {
-
-			}
+			} catch (Exception e) {}
 		}
 		return resList;
 	}
@@ -68,24 +72,22 @@ public class IocContainer {
 	public void init() throws Exception {
 		new XMLBeanDefinitionParser(this, xmlPath).parse();
 		registerBeanPostProcessors();
-		createBean();
+		refresh();
 	}
 
-	private void createBean() throws Exception {
-		for(Iterator<Entry<String, BeanDefinition>> i = registry.entrySet().iterator(); i.hasNext();) {
-			Entry<String, BeanDefinition> entry = i.next();
-			BeanDefinition beanDefinition = entry.getValue();
-			doCreateBean(beanDefinition);
-		}
-	}
-
+	/**
+	 * 根据 beanDefinition 进行 bean 的创建、属性注入、后置处理
+	 */
 	private void doCreateBean(BeanDefinition beanDefinition) throws Exception {
 		String beanName = beanDefinition.getName();
 		preInitSingleton(beanDefinition);
 		initializeBean(beanDefinition.getBean(), beanName);
+		beanDefinition.setCompleted(true);
 	}
 
-	
+	/**
+	 * 进行 bean 的创建、属性注入
+	 */
 	private void preInitSingleton(BeanDefinition beanDefinition) throws Exception {
 		Object bean = beanDefinition.getBean();
 		// bean 未实例化 双重校验锁新建bean
@@ -98,6 +100,9 @@ public class IocContainer {
 		}
 	}
 
+	/**
+	 * 调用后置处理器，对 bean 进行前置初始化，初始化，后置初始化
+	 */
 	private void initializeBean(Object bean, String beanName) throws Exception {
 		// 1. 初始化之前
 		for(BeanPostProcessor processor: beanPostProcessors) {
@@ -106,7 +111,7 @@ public class IocContainer {
 
 		// 2. 初始化
 		String initMethod = registry.get(beanName).getInitMethod();
-		if(! initMethod.equals("")) {
+		if(initMethod != null && ! initMethod.equals("")) {
 			bean.getClass().getMethod(initMethod).invoke(bean);
 		}
 
@@ -124,9 +129,9 @@ public class IocContainer {
 	 * @throws Exception
 	 */
 	private void compareAndSetBean(Object bean, Object expected, BeanDefinition beanDefinition) throws Exception {
-		if(bean == expected) {
+		if(bean != null && bean.equals(expected) || bean == expected) {
 			synchronized(singletonLock) {
-				if(bean == expected) {
+				if(bean != null && bean.equals(expected) || bean == expected) {
 					beanDefinition.setBean(instantiateBean(beanDefinition));
 				}
 			}
@@ -151,7 +156,7 @@ public class IocContainer {
 				throw new IllegalArgumentException("ref 名不存在");
 			} else {
 				// 检查是否存在此bean，如果存在，则直接赋值，否则注入新的对象
-				compareAndSetBean(value, null, dependency);
+				compareAndSetBean(value = dependency.getBean(), null, dependency);
 				value = dependency.getBean();
 			}
 		}
@@ -168,7 +173,7 @@ public class IocContainer {
 	}
 
 	/**
-	 * 初始化一个bean，但不进行依赖注入
+	 * 创建一个bean，但不进行依赖注入
 	 * @param beanDefinition
 	 * @return
 	 * @throws Exception
@@ -186,7 +191,7 @@ public class IocContainer {
 		BeanDefinition beanDefinition = registry.get(name);
 		// 不存在此bean定义
 		if(beanDefinition == null) {
-			return null;
+			throw new RuntimeException("beanDefinition不存在!");
 		}
 		Object bean = beanDefinition.getBean();
 		// bean还未实例化
@@ -200,7 +205,16 @@ public class IocContainer {
 		return beanDefinition.getBean();
 	}
 
+	/**
+	 * 试图根据现有的 beanDefinition 创建全部的 bean，若 bean 已经存在，则不用再创建
+	 */
 	public void refresh() throws Exception {
-		
+		for(Iterator<Entry<String, BeanDefinition>> i = registry.entrySet().iterator(); i.hasNext();) {
+			Entry<String, BeanDefinition> entry = i.next();
+			BeanDefinition beanDefinition = entry.getValue();
+			if(beanDefinition.getCompleted() == false) {
+				doCreateBean(beanDefinition);		
+			}
+		}
 	}
 }
