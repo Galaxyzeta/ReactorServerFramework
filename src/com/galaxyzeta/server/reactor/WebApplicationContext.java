@@ -18,6 +18,7 @@ import com.galaxyzeta.util.Logger;
 import com.galaxyzeta.util.LoggerFactory;
 
 import com.galaxyzeta.annotation.RequestMapping;
+import com.galaxyzeta.entity.InterceptorInvocation;
 import com.galaxyzeta.entity.Router;
 import com.galaxyzeta.http.HttpRequest;
 import com.galaxyzeta.http.HttpResponse;
@@ -30,12 +31,20 @@ public class WebApplicationContext {
 	private final Logger LOG = LoggerFactory.getLogger(WebApplicationContext.class);
 	private final HashMap<String, String> CONFIGS = new HashMap<>();
 	private final HashMap<String, HashMap<String, Router>> ROUTERS = new HashMap<>();
-	private final ArrayList<Method> INTERCEPTORS = new ArrayList<>();
+	private final ArrayList<InterceptorInvocation> INTERCEPTORS = new ArrayList<>();
 	private final ArrayList<Class<?>> CONTROLLERS = new ArrayList<>();
 	private IocContainer iocContainter;
 
 	private static final String INTERCEPTOR_INTERFACE_NAME = "Interceptor";
 	private static final String INTERCEPTOR_METHOD_NAME = "intercept";
+
+	private static class SingletonHolder {
+		public static WebApplicationContext app = new WebApplicationContext();
+	}
+
+	public static WebApplicationContext getInstance() {
+		return SingletonHolder.app;
+	}
 
 	// 对外提供 Controller 路由查询
 	public Router searchRouter(String method, String url) {
@@ -43,18 +52,13 @@ public class WebApplicationContext {
 	}
 
 	// 对外提供拦截器方法
-	public ArrayList<Method> getInterceptors() {
+	public ArrayList<InterceptorInvocation> getInterceptors() {
 		return INTERCEPTORS;
 	}
 
 	// 对外提供获取static路径方法
 	public String getStaticPath() {
 		return CONFIGS.get(Constant.STATIC);
-	}
-
-	// 对外提供获取 Ioc 容器的方法
-	public IocContainer getIocContainer() {
-		return this.iocContainter;
 	}
 
 	// 初始化 方法 -- URL Mapping 哈希表
@@ -142,8 +146,14 @@ public class WebApplicationContext {
 					LOG.ERROR(String.format("启动失败，拦截器必须实现 %s 接口", INTERCEPTOR_INTERFACE_NAME));
 					System.exit(1);
 				} else {
-					INTERCEPTORS.add(interceptorClass.getDeclaredMethod("intercept", HttpRequest.class, HttpResponse.class));
+					INTERCEPTORS.add(new InterceptorInvocation(
+						interceptorClassName,
+						interceptorClass.getDeclaredMethod("intercept", HttpRequest.class, HttpResponse.class)));
 					LOG.INFO(String.format("拦截器 %s 注册成功", interceptorClassName));
+					// 拦截器注册到 Ioc 容器中
+					BeanDefinition interceptorDefinition = new BeanDefinition(interceptorClassName, interceptorClass.getTypeName(), null);
+					iocContainter.registerBeanDefinition(interceptorClassName, interceptorDefinition);
+
 				}
 			} catch (ClassNotFoundException e ) {
 				LOG.ERROR(String.format("启动失败，定义在配置文件中的拦截器 %s 没有找到", interceptorClassName));
@@ -167,12 +177,23 @@ public class WebApplicationContext {
 		}
 	}
 
+	
 	public String getConfig(String configName) {
 		return CONFIGS.get(configName);
 	}
+
+	// 暴露给外界的 bean 获取方法，用于简化操作
+	public Object getBean(String beanName) {
+		return iocContainter.getBean(beanName);
+	}
+
+	// 暴露给外界的运行接口
+	public static void run(String configFile) {
+		getInstance().doRunApplication(configFile);
+	}
 	
 	// 运行一个Reactor架构的服务器
-	public void runApplication(String configFile) {
+	private void doRunApplication(String configFile) {
 		
 		// 读取配置
 		ConfigParser configParser = new ConfigParser(configFile);
@@ -208,10 +229,10 @@ public class WebApplicationContext {
 		ReactorServer server;
 		if(isMainSubReactor) {
 			// 主从 Reactor 模型
-			server = new MainSubReactorServer(Integer.parseInt(port), this, Integer.valueOf(CONFIGS.get(Constant.SUB_REACTOR_COUNT)));
+			server = new MainSubReactorServer(Integer.parseInt(port), Integer.valueOf(CONFIGS.get(Constant.SUB_REACTOR_COUNT)));
 		} else {
 			// 单 Reactor 模型
-			server = new SingleReactorServer(Integer.parseInt(port), this);
+			server = new SingleReactorServer(Integer.parseInt(port));
 		}
 		// Logger.disabled = true;
 		server.run();

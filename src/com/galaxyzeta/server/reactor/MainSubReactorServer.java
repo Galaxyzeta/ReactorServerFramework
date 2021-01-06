@@ -34,13 +34,12 @@ public class MainSubReactorServer extends ReactorServer implements Runnable {
 	private List<SubReactor> subs = new ArrayList<>();
  	private WebApplicationContext context;
 
-	public MainSubReactorServer(int port, WebApplicationContext context) {
+	public MainSubReactorServer(int port) {
 		this.port = port;
-		this.context = context;
 	}
 
-	public MainSubReactorServer(int port, WebApplicationContext context, int subReactorCount) {
-		this(port, context);
+	public MainSubReactorServer(int port, int subReactorCount) {
+		this(port);
 		this.subReactorCount = subReactorCount;
 	}
 
@@ -59,7 +58,7 @@ public class MainSubReactorServer extends ReactorServer implements Runnable {
 		public void register(SocketChannel clientSocket) {
 			LOG.INFO("将clientSocket注册到 SubReactor #" + no);
 			try {
-				new Handler(subSelector, clientSocket, context);
+				new Handler(subSelector, clientSocket);
 			} catch (IOException ioe) {
 				ioe.printStackTrace();
 			}

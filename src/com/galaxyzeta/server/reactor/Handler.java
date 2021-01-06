@@ -9,6 +9,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 
+import com.galaxyzeta.entity.InterceptorInvocation;
 import com.galaxyzeta.entity.Router;
 import com.galaxyzeta.http.HttpRequest;
 import com.galaxyzeta.http.HttpResponse;
@@ -51,9 +52,11 @@ public class Handler {
 	private static Logger LOG = LoggerFactory.getLogger(Handler.class);
 
 	/** 设置 Ioc 上下文，设置视图解析器，绑定 Selector 与 SocketChannel，将自身作为附加物加到 SelectionKey 上 */
-	public Handler(Selector channelSelector, SocketChannel clientSocket, WebApplicationContext context) throws IOException {
-		this.context = context;
-		this.viewResolver = (ViewResolver)context.getIocContainer().getBean("viewResolver");
+	public Handler(Selector channelSelector, SocketChannel clientSocket) throws IOException {
+		
+		this.context = WebApplicationContext.getInstance();
+
+		this.viewResolver = (ViewResolver)context.getBean("viewResolver");
 		this.viewResolver.setContext(context);
 
 		this.channelSelector = channelSelector;
@@ -89,9 +92,11 @@ public class Handler {
 				boolean intercepted = false;
 			
 				// === 调用拦截 ===
-				ArrayList<Method> interceptorMethods = context.getInterceptors();		// 取得拦截器列表
-				for(Method singleInterceptMethod : interceptorMethods) {
-					Boolean execResult = (Boolean) singleInterceptMethod.invoke(null, req, resp);		// 执行拦截器逻辑
+				ArrayList<InterceptorInvocation> interceptors = context.getInterceptors();		// 取得拦截器列表
+				for(InterceptorInvocation invocation : interceptors) {
+					Method singleInterceptMethod = invocation.getInterceptorMethod();
+					Object invoker = context.getBean(invocation.getInterceptorBeanName());
+					Boolean execResult = (Boolean) singleInterceptMethod.invoke(invoker, req, resp);		// 执行拦截器逻辑
 					// 请求被拒绝
 					if(execResult == false) {
 						LOG.WARN("请求未能通过过滤器");
@@ -106,7 +111,7 @@ public class Handler {
 						LOG.WARN(String.format("找不到正确处理此请求的Controller %s %s，它可能是资源路径", req.getMethod(), req.getUrl()));
 						viewObject = req.getUrl();		// 找不到 Controller，先认为它是资源路径
 					} else {
-						Object controller = context.getIocContainer().getBean(router.getControllerBeanName());
+						Object controller = context.getBean(router.getControllerBeanName());
 						viewObject = router.getHandlerMethod().invoke(controller, req, resp);		// 否则，视图对象是 Controller 的返回值
 					}
 				}

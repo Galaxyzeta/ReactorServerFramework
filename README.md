@@ -92,7 +92,7 @@ import com.galaxyzeta.server.reactor.WebApplicationContext;
 
 public class MyApplication {
 	public static void main(String[] args) {
-		new WebApplicationContext().runApplication("src/tutorial/config.property");
+		WebApplicationContext.run("src/tutorial/config.property");
 	}
 }
 
@@ -170,7 +170,7 @@ public class MyInterceptor1 implements Interceptor {
 
     private static Logger LOG = LoggerFactory.getLogger(MyInterceptor1.class);
 
-    public static boolean intercept(HttpRequest req, HttpResponse resp) {
+    public boolean intercept(HttpRequest req, HttpResponse resp) {
         LOG.DEBUG("请求正在经过 [拦截器1] 的过滤");
         return true;
     }
@@ -186,7 +186,7 @@ public class MyInterceptor1 implements Interceptor {
 **一些重要说明：**
 
 - 拦截器必须放在指定的包下。
-- 拦截器的方法规范：必须是 `public static boolean intercept(HttpRequest req, HttpResponse resp)` 不能有任何变动。
+- 拦截器的方法规范：必须是 `public boolean intercept(HttpRequest req, HttpResponse resp)` 不能有任何变动。
 - 若你的某个拦截器返回 `false` ，控制器方法不会被执行，参数 resp 将作为最终 response 被写回浏览器。
 
 ### 运行Demo
