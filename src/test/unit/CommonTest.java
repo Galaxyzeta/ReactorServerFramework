@@ -55,7 +55,13 @@ public class CommonTest {
 		System.out.println(resp.getResponseBody());
 	}
 
+	public static void stringLengthTest() {
+		System.out.println("asd\0qwe".length());
+		System.out.println("asd\0qwe".getBytes().length);
+		System.out.println("中文字的长度".getBytes().length);
+	}
+
 	public static void main(String[] args) {
-		viewResolveJson();
+		stringLengthTest();
 	}
 }

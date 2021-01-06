@@ -17,20 +17,20 @@ public class MyController implements Controller {
 	private static Logger LOG = LoggerFactory.getLogger(MyController.class);
 
 	@RequestMapping(method = "GET", url = "/debug")
-	public static Object debugGet(HttpRequest req, HttpResponse resp) {
+	public Object debugGet(HttpRequest req, HttpResponse resp) {
 		LOG.DEBUG("GET /debug invoked OK");
 		return "/html/index.html";
 	}
 
 	@RequestMapping(method = "GET", url = "/string")
-	public static Object debugString(HttpRequest req, HttpResponse resp) {
+	public Object debugString(HttpRequest req, HttpResponse resp) {
 		LOG.DEBUG("GET /string invoked OK");
 		resp.setResponseBody("Hello this is a json view object!");
 		return null;
 	}
 
 	@RequestMapping(method = "GET", url = "/json")
-	public static Object debugJason(HttpRequest req, HttpResponse resp) {
+	public Object debugJason(HttpRequest req, HttpResponse resp) {
 		LOG.DEBUG("GET /json invoked OK");
 		QueryList ql = new QueryList();
 		ArrayList<String> li = new ArrayList<>();

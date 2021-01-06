@@ -106,7 +106,8 @@ public class Handler {
 						LOG.WARN(String.format("找不到正确处理此请求的Controller %s %s，它可能是资源路径", req.getMethod(), req.getUrl()));
 						viewObject = req.getUrl();		// 找不到 Controller，先认为它是资源路径
 					} else {
-						viewObject = router.getHandlerMethod().invoke(null, req, resp);		// 否则，视图对象是 Controller 的返回值
+						Object controller = context.getIocContainer().getBean(router.getControllerBeanName());
+						viewObject = router.getHandlerMethod().invoke(controller, req, resp);		// 否则，视图对象是 Controller 的返回值
 					}
 				}
 				
@@ -127,7 +128,7 @@ public class Handler {
 				viewResolver.resolve(viewObject, resp);
 
 				boolean keepAlive = context.getConfig(Constant.CONNECTION_KEEP_ALIVE).equals("true");
-				resp.addResponseHeader("Content-Length", Integer.toString(resp.getResponseBody().length()));
+				resp.addResponseHeader("Content-Length", Integer.toString(resp.getResponseBody().getBytes().length));
 				if(keepAlive) {
 					resp.addResponseHeader("Connection", "Keep-Alive");
 					resp.addResponseHeader("Keep-Alive", String.format("timeout=%d, max=%d", 

@@ -6,6 +6,6 @@ static: src/static
 ioc-xml-path: src/test/iocxml/bean.xml
 use-main-sub-reactor: true
 sub-reactor-count: 8
-connection-keep-alive: false
+connection-keep-alive: true
 keep-alive-max: 1000
 keep-alive-timeout: 5

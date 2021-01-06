@@ -118,13 +118,13 @@ public class MyController implements Controller {
 	private static Logger LOG = LoggerFactory.getLogger(MyController.class);
 
 	@RequestMapping(method = "GET", url = "/debug")
-	public static Object debugGet(HttpRequest req, HttpResponse resp) {
+	public Object debugGet(HttpRequest req, HttpResponse resp) {
 		LOG.DEBUG("GET /debug invoked OK");
 		return "html/index.html";
 	}
 
 	@RequestMapping(method = "GET", url = "/json")
-	public static Object debugPost(HttpRequest req, HttpResponse resp) {
+	public Object debugPost(HttpRequest req, HttpResponse resp) {
 		LOG.DEBUG("POST /debug invoked OK");
 		HttpResponse myResponse = ResponseFactory.getSuccess();
 		resp.setResponseBody("Hello this is a json view object!");
@@ -149,7 +149,7 @@ public class MyController implements Controller {
 
 - 控制器必须放在配置文件指定的包下，否则不会被检测到。
 - 作为控制器的方法必须附带 `@RequestMapping(method = "xxx", url = "xxx")`。
-- 项目对业务逻辑方法的限制：必须是 `public static`，参数必须有 `HttpReqeust` 和 `HttpResponse`。
+- 项目对业务逻辑方法的限制：参数必须有 `HttpReqeust` 和 `HttpResponse`。
 - 如果 controller 方法返回 null，参数 resp 将被作为 Response 写回给浏览器。
 - 如果 controller 方法返回视图物体，参数 resp 不会起到作用。
 

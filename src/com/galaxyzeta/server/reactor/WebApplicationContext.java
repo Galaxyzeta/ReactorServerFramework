@@ -11,6 +11,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 
 import com.galaxyzeta.parser.ConfigParser;
+import com.galaxyzeta.server.ioc.BeanDefinition;
 import com.galaxyzeta.server.ioc.IocContainer;
 import com.galaxyzeta.util.Constant;
 import com.galaxyzeta.util.Logger;
@@ -99,11 +100,17 @@ public class WebApplicationContext {
 						continue;
 					}
 
-					Router router = new Router(requestMapping.method(), requestMapping.url(), singleHandler);
+					Router router = new Router(requestMapping.method(), requestMapping.url(), singleHandler, controller.getName());
 					ROUTERS.get(requestMapping.method()).put(requestMapping.url(), router);
 				}
+				// 控制器注册到 Ioc 容器中
+				final String controllerBeanName = controller.getTypeName();
+				BeanDefinition controllerDefinition = new BeanDefinition(controllerBeanName, controller.getTypeName(), null);
+				iocContainter.registerBeanDefinition(controllerBeanName, controllerDefinition);
+
 			} catch (SecurityException e) {
-				e.printStackTrace();
+				LOG.ERROR("Security Problem encounter:" + e);
+				System.exit(1);
 			}
 		}
 	}
@@ -175,8 +182,16 @@ public class WebApplicationContext {
 		// 赋予配置
 		String port = CONFIGS.getOrDefault(Constant.PORT, "8080");
 
-		// Ioc 容器注册
+		// Ioc 容器定义
 		iocContainter = new IocContainer(CONFIGS.getOrDefault(Constant.IOC_XML_PATH, "src/iocxml/bean.xml"));
+
+		// Controller 注册，基于注解
+		controllerRegistration();
+
+		// Interceptor 注册，根据 XML 配置注册
+		interceptorRegistration();
+		
+		// Ioc 容器初始化
 		try {
 			LOG.INFO("=======初始化Ioc容器=======");
 			iocContainter.init();
@@ -186,12 +201,6 @@ public class WebApplicationContext {
 			System.exit(1);
 		}
 		LOG.INFO("Ioc容器初始化成功");
-
-		// Controller 注册，基于注解
-		controllerRegistration();
-
-		// Interceptor 注册，根据 XML 配置注册
-		interceptorRegistration();
 
 		// 服务器初始化
 		// --- 选择使用何种类型的服务器
