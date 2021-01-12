@@ -77,7 +77,6 @@ public class Handler {
 				req = new RequestParser(clientSocket).parse();
 				if(req == null) {
 					// -1 作为结束
-					LOG.WARN("连接断开");
 					shutdownConnection();
 					return;
 				}
@@ -147,8 +146,7 @@ public class Handler {
 				
 				// 此处若直接断开C/S连接，则变为短连接
 				if(!keepAlive ) {
-					clientSocket.shutdownOutput();
-					sk.cancel();
+					shutdownConnection();
 				} else {
 					sk.interestOps(SelectionKey.OP_READ);
 					status = READ;
@@ -185,6 +183,7 @@ public class Handler {
 	private void shutdownConnection() throws IOException {
 		sk.cancel();
 		clientSocket.close();
+		LOG.WARN("连接断开");
 	}
 
 	/** 每当外部有 Selector 报告事件发生，调用 execute 执行流程 */
