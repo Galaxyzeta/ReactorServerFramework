@@ -75,4 +75,12 @@ public class HttpResponse {
 	public void addResponseHeader(String key, String value) {
 		responseHeaders.put(key, value);
 	}
+
+	public void copy(HttpResponse resp) {
+		this.responseBody = resp.responseBody;
+		this.responseHeaders = new HashMap<String, String>(resp.responseHeaders);
+		this.statusCode = resp.statusCode;
+		this.statusDescription = resp.statusDescription;
+		this.version = resp.version;
+	}
 }

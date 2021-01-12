@@ -77,7 +77,6 @@ public class IocContainer {
 	 */
 	private void createAndPopulateBean(BeanDefinition beanDefinition) {
 		Object bean = beanDefinition.getBean();
-		// bean 未实例化 双重校验锁新建bean
 		setBean(bean, beanDefinition);
 		bean = beanDefinition.getBean();
 

@@ -37,6 +37,7 @@ public class ViewResolver {
 	public void resolve(Object viewObject, HttpResponse resp) {
 		if(viewObject instanceof HttpResponse) {
 			LOG.INFO("按照 [HttpResponse] 的方式处理视图");
+			resp.copy((HttpResponse)viewObject);
 		} else if (viewObject instanceof String) {
 			resourceResolver(viewObject, resp);
 		} else if (viewObject != null){
