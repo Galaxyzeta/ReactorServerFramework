@@ -2,17 +2,15 @@ package com.galaxyzeta.server.ioc;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class IocContainer {
-	private final ConcurrentHashMap<String, BeanDefinition> registry = new ConcurrentHashMap<>();
-	private final CopyOnWriteArrayList<BeanPostProcessor> beanPostProcessors = new CopyOnWriteArrayList<>();
+	private final HashMap<String, BeanDefinition> registry = new HashMap<>();
+	private final ArrayList<BeanPostProcessor> beanPostProcessors = new ArrayList<>();
 	private String xmlPath;
-	private final Object singletonLock = new Object();
 	
 	// constructor
 	public IocContainer(String xmlPath) {
@@ -57,8 +55,7 @@ public class IocContainer {
 			String beanClassName = beanDefinition.getClassname();
 			try {
 				if(clazz.isAssignableFrom(Class.forName(beanClassName))) {
-					doCreateBean(beanDefinition);
-					resList.add(beanDefinition.getBean());
+					resList.add(getBean(beanDefinition.getName()));
 				}
 			} catch (Exception e) {}
 		}
@@ -76,34 +73,36 @@ public class IocContainer {
 	}
 
 	/**
-	 * 根据 beanDefinition 进行 bean 的创建、属性注入、后置处理
-	 */
-	private void doCreateBean(BeanDefinition beanDefinition) throws Exception {
-		String beanName = beanDefinition.getName();
-		preInitSingleton(beanDefinition);
-		initializeBean(beanDefinition.getBean(), beanName);
-		beanDefinition.setCompleted(true);
-	}
-
-	/**
 	 * 进行 bean 的创建、属性注入
 	 */
-	private void preInitSingleton(BeanDefinition beanDefinition) throws Exception {
+	private void createAndPopulateBean(BeanDefinition beanDefinition) {
 		Object bean = beanDefinition.getBean();
 		// bean 未实例化 双重校验锁新建bean
-		compareAndSetBean(bean, null, beanDefinition);
+		setBean(bean, beanDefinition);
 		bean = beanDefinition.getBean();
 
 		// 注入 bean 的依赖
+		populateBean(beanDefinition);
+	}
+
+	/**
+	 * 对一个 bean 注入全部依赖
+	 * @param beanDefinition
+	 */
+	private void populateBean(BeanDefinition beanDefinition) {
+		// 注入 bean 的依赖
 		for(PropertyValue prop : beanDefinition.getProp()) {
-			dependencyInjection(bean, prop);
+			dependencyInjection(beanDefinition.getBean(), prop);
 		}
+		beanDefinition.setStatus(Status.POPULATED);
 	}
 
 	/**
 	 * 调用后置处理器，对 bean 进行前置初始化，初始化，后置初始化
 	 */
-	private void initializeBean(Object bean, String beanName) throws Exception {
+	private void initializeBean(BeanDefinition beanDefinition, String beanName) throws Exception {
+		
+		Object bean = beanDefinition.getBean();
 		// 1. 初始化之前
 		for(BeanPostProcessor processor: beanPostProcessors) {
 			bean = processor.postProcessBeforeInitialization(bean, beanName);
@@ -119,6 +118,9 @@ public class IocContainer {
 		for(BeanPostProcessor processor: beanPostProcessors) {
 			bean = processor.postProcessAfterInitialization(bean, beanName);
 		}
+
+		beanDefinition.setStatus(Status.INITIALIZED);
+
 	}
 
 	/**
@@ -128,14 +130,8 @@ public class IocContainer {
 	 * @param beanDefinition
 	 * @throws Exception
 	 */
-	private void compareAndSetBean(Object bean, Object expected, BeanDefinition beanDefinition) throws Exception {
-		if(bean != null && bean.equals(expected) || bean == expected) {
-			synchronized(singletonLock) {
-				if(bean != null && bean.equals(expected) || bean == expected) {
-					beanDefinition.setBean(instantiateBean(beanDefinition));
-				}
-			}
-		}
+	private void setBean(Object bean, BeanDefinition beanDefinition) {
+		beanDefinition.setBean(instantiateBean(beanDefinition));
 	}
 
 	/**
@@ -144,7 +140,7 @@ public class IocContainer {
 	 * @param prop
 	 * @throws Exception
 	 */
-	private void dependencyInjection(Object target, PropertyValue prop) throws Exception {
+	private void dependencyInjection(Object target, PropertyValue prop) {
 		String name = prop.getName();
 		Object value = prop.getValue();
 		// 如果是 ref，则在此处 ref 表示依赖的名字
@@ -156,7 +152,7 @@ public class IocContainer {
 				throw new IllegalArgumentException("ref 名不存在");
 			} else {
 				// 检查是否存在此bean，如果存在，则直接赋值，否则注入新的对象
-				compareAndSetBean(value = dependency.getBean(), null, dependency);
+				setBean(value = dependency.getBean(), dependency);
 				value = dependency.getBean();
 			}
 		}
@@ -168,7 +164,13 @@ public class IocContainer {
 			method.invoke(target, value);
 		} catch (NoSuchMethodException e) {
 			// 否则强行field注入
-			target.getClass().getField(name).set(target, value);
+			try {
+				target.getClass().getField(name).set(target, value);
+			} catch (Exception e1) {
+				critical(e1);
+			}
+		} catch (Exception e) {
+			critical(e);
 		}
 	}
 
@@ -178,12 +180,28 @@ public class IocContainer {
 	 * @return
 	 * @throws Exception
 	 */
-	private Object instantiateBean(BeanDefinition beanDefinition) throws Exception {
-		return Class.forName(beanDefinition.getClassname()).getDeclaredConstructor().newInstance();
+	private Object instantiateBean(BeanDefinition beanDefinition) {
+		try {
+			Object ret = Class.forName(beanDefinition.getClassname()).getDeclaredConstructor().newInstance();
+			beanDefinition.setStatus(Status.CREATED);
+			return ret;
+		} catch(Exception e) {
+			critical(e);
+		}
+		return null;
 	}
 
 	/**
-	 * 获得容器内部的bean，若不存在，返回null
+	 * 发生了严重错误，不能继续执行，程序立即退出
+	 */
+	private void critical(Exception e) {
+		System.out.println("[! CRITICAL !] Bean instantiation failed! Exception is " + e);
+		e.printStackTrace();
+		System.exit(1);
+	}
+
+	/**
+	 * 获得容器内部的bean，若不存在bean定义，返回null。若 bean 未实例化，实例化并执行依赖注入之后返回。
 	 * @param name
 	 * @return
 	 */
@@ -191,18 +209,28 @@ public class IocContainer {
 		BeanDefinition beanDefinition = registry.get(name);
 		// 不存在此bean定义
 		if(beanDefinition == null) {
-			throw new RuntimeException("beanDefinition不存在!");
+			critical(new RuntimeException("beanDefinition不存在!"));
 		}
-		Object bean = beanDefinition.getBean();
 		// bean还未实例化
-		if(bean == null) {
-			try {
-				doCreateBean(beanDefinition);
-			} catch(Exception e) {
-				return null;
-			}
+		if(beanDefinition.getStatus() == Status.NULL) {
+			createAndPopulateBean(beanDefinition);
+		} else if (beanDefinition.getStatus() == Status.CREATED) {
+			populateBean(beanDefinition);
 		}
 		return beanDefinition.getBean();
+	}
+
+	/**
+	 * 所有未初始化的 bean 调用初始化方法
+	 */
+	private void initialize() throws Exception {
+		for(Iterator<Entry<String, BeanDefinition>> i = registry.entrySet().iterator(); i.hasNext();) {
+			Entry<String, BeanDefinition> entry = i.next();
+			BeanDefinition beanDefinition = entry.getValue();
+			if(beanDefinition.getStatus() == Status.POPULATED) {
+				initializeBean(beanDefinition, beanDefinition.getName());
+			}
+		}
 	}
 
 	/**
@@ -212,9 +240,8 @@ public class IocContainer {
 		for(Iterator<Entry<String, BeanDefinition>> i = registry.entrySet().iterator(); i.hasNext();) {
 			Entry<String, BeanDefinition> entry = i.next();
 			BeanDefinition beanDefinition = entry.getValue();
-			if(beanDefinition.getCompleted() == false) {
-				doCreateBean(beanDefinition);		
-			}
+			getBean(beanDefinition.getName());
 		}
+		initialize();
 	}
 }

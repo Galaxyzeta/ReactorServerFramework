@@ -3,12 +3,13 @@ package com.galaxyzeta.server.ioc;
 import java.util.ArrayList;
 
 public class BeanDefinition {
+
 	private String name;
 	private String classname;
 	private String initMethod;
 	private ArrayList<PropertyValue> prop = new ArrayList<>();
 	private Object bean;
-	private boolean completed = false;
+	private Status status = Status.NULL;
 
 	// constructor
 	public BeanDefinition(String name, String classname, String initMethod) {
@@ -33,8 +34,8 @@ public class BeanDefinition {
 	public String getInitMethod() {
 		return initMethod;
 	}
-	public boolean getCompleted() {
-		return completed;
+	public Status getStatus() {
+		return status;
 	}
 	
 	// setter
@@ -53,7 +54,7 @@ public class BeanDefinition {
 	public void setInitMethod(String initMethod) {
 		this.initMethod = initMethod;
 	}
-	public void setCompleted(boolean completed) {
-		this.completed = completed;
+	public void setStatus(Status status) {
+		this.status = status;
 	}
 }

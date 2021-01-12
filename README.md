@@ -283,9 +283,10 @@ public class IocContainer {
    }
    ```
 2. 注册 bean 后置处理器。通过 by-type 寻找 `registry` 中类型为 `BeanPostProcessor` 的 bean 定义，然后写入 `IocContainer` 的 `beanPostProcessors` 列表。
-3. 创建 bean。遍历 `registry`，依次创建 bean。若发现此 bean 有需要注入的基本类型依赖，则直接创建基本类型变量并注入。若发现此 bean 有 ref 型注入，则转向创建 ref 指向的 bean，然后再注入。（不能解决循环依赖）
+3. 创建 bean。遍历 `registry`，依次创建 bean。若发现此 bean 有需要注入的基本类型依赖，则直接创建基本类型变量并注入。若发现此 bean 有 ref 型注入，则转向创建 ref 指向的 bean，然后再注入。
 4. 调用注册的 beanPostProcessor，对所有 bean 进行初始化。
 5. 至此 `IocContainer` 初始化完成。
+6. `IocContainer` 现在支持循环依赖，借鉴了 Spring 处理这一问题的思想和状态机的方法。
 
 ### 更新记录
 

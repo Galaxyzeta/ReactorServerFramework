@@ -50,7 +50,7 @@ public class IocTest {
 		logger.INFO(((CycleInjection)context.getBean("cycleInjection")).getCycleInjection().toString());
 		logger.INFO(((CycleInjection2)context.getBean("cycleInjection2")).getCycleInjection().toString());
 
-		logger.DEBUG("======== check cycle injection ========");
+		logger.DEBUG("======== check cycle injection ok ========");
 
 	}
 }
